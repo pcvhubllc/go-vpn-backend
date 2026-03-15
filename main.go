@@ -47,6 +47,12 @@ func main() {
 			http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 			return
 		}
+		// The Citadel Security Lock
+		apiSecret := os.Getenv("CITADEL_SECRET")
+		if r.Header.Get("Authorization") != "Bearer "+apiSecret {
+			http.Error(w, "Unauthorized: Citadel doors are locked.", http.StatusUnauthorized)
+			return
+		}
 
 		var req CreatePeerRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
