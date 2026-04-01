@@ -66,12 +66,12 @@ func main() {
 		}
 
 		// 1. Generate WireGuard Keys
-		keys, err := wg.GenerateKeyPair()
+		privKey, pubKey, err := GenerateKeys()
 		if err != nil {
-			log.Printf("Failed to generate keys: %v", err)
-			http.Error(w, "Internal server error: failed to generate keys", http.StatusInternalServerError)
-			return
+		    log.Fatalf("Critical Error: Failed to generate WireGuard keys: %v", err)
 		}
+
+		log.Printf("Server successfully generated keys. Public Key: %s", pubKey)
 
 		// 2. Add Peer to Config and Allocate IP
 		assignedIP, err := wg.AddPeerToConfig(configFile, keys.PublicKey)
@@ -90,7 +90,7 @@ func main() {
 
 		// 4. Update Supabase
 		if supaClient != nil {
-			if err := supaClient.InsertPeer(req.UserID, assignedIP, keys.PublicKey); err != nil {
+			if err := supaClient.InsertPeer(req.UserID, assignedIP, pubKey); err != nil {
 				log.Printf("Failed to insert peer into Supabase: %v", err)
 				http.Error(w, "Internal server error: failed to update database", http.StatusInternalServerError)
 				return
@@ -101,8 +101,8 @@ func main() {
 		resp := CreatePeerResponse{
 			UserID:     req.UserID,
 			IPAddress:  assignedIP,
-			PublicKey:  keys.PublicKey,
-			PrivateKey: keys.PrivateKey, // Give private key ONLY to the client once
+			PublicKey:  kpubKey,
+			PrivateKey: privKey, // Give private key ONLY to the client once
 		}
 
 		w.Header().Set("Content-Type", "application/json")
